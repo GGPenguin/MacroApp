@@ -22,7 +22,13 @@
         <service android:name=".services.OverlayService"
             android:permission="android.permission.SYSTEM_ALERT_WINDOW" />
 
+        <service android:name=".services.MacroAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"/>
+
         <service android:name=".services.SchedulerService" />
-        <service android:name=".services.MacroAccessibilityService" />
+
+        <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+        <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+        <uses-permission android:name="android.permission.INTERNET" />
     </application>
 </manifest>
