@@ -16,6 +16,14 @@
             </intent-filter>
         </activity>
 
+        <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+        <service android:name=".services.OverlayService"
+            android:permission="android.permission.SYSTEM_ALERT_WINDOW"
+            android:enabled="true"
+            android:exported="false" />
+
+
         <service android:name=".OverlayService" android:exported="true" />
         <service
             android:name=".MacroRecorder"

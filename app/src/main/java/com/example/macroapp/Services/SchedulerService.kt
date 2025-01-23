@@ -1,60 +1,114 @@
-package com.example.macroapp
+package com.example.macroapp.services
 
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
-import androidx.work.*
-import java.util.concurrent.TimeUnit
+import android.content.Intent
+import android.os.IBinder
+import android.util.Log
+import com.example.macroapp.database.MacroDatabase
+import com.example.macroapp.models.MacroEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.util.*
 
-class SchedulerService {
+class SchedulerService : Service() {
 
-    companion object {
-        /**
-         * Schedules a macro to play at a specific time.
-         * @param context The application context.
-         * @param macroId The unique ID of the macro to play.
-         * @param timeInMillis The time at which the macro should be played, in milliseconds.
-         */
-        fun scheduleMacro(context: Context, macroId: String, timeInMillis: Long) {
-            // Calculate the delay from the current time
-            val delay = timeInMillis - System.currentTimeMillis()
-            if (delay <= 0) {
-                // If the time has already passed, do nothing
-                return
+    private val TAG = "SchedulerService"
+
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.i(TAG, "SchedulerService started")
+
+        // Check if an action is provided in the intent
+        val action = intent?.action
+        if (action == ACTION_SCHEDULE_MACRO) {
+            val macroId = intent.getLongExtra(EXTRA_MACRO_ID, -1)
+            val scheduleTime = intent.getLongExtra(EXTRA_SCHEDULE_TIME, -1)
+
+            if (macroId != -1L && scheduleTime != -1L) {
+                scheduleMacro(macroId, scheduleTime)
             }
+        } else if (action == ACTION_RUN_MACRO) {
+            val macroId = intent.getLongExtra(EXTRA_MACRO_ID, -1)
+            if (macroId != -1L) {
+                executeMacro(macroId)
+            }
+        }
 
-            // Create a WorkRequest to schedule playback
-            val workRequest = OneTimeWorkRequestBuilder<MacroPlaybackWorker>()
-                .setInputData(workDataOf("MACRO_ID" to macroId))
-                .setInitialDelay(delay, TimeUnit.MILLISECONDS)
-                .build()
+        return START_STICKY
+    }
 
-            // Enqueue the WorkRequest
-            WorkManager.getInstance(context).enqueue(workRequest)
+    /**
+     * Schedules a macro to run at a specific time.
+     */
+    private fun scheduleMacro(macroId: Long, scheduleTime: Long) {
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, SchedulerService::class.java).apply {
+            action = ACTION_RUN_MACRO
+            putExtra(EXTRA_MACRO_ID, macroId)
+        }
+        val pendingIntent = PendingIntent.getService(
+            this,
+            macroId.toInt(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            scheduleTime,
+            pendingIntent
+        )
+
+        Log.i(TAG, "Macro with ID $macroId scheduled for ${Date(scheduleTime)}")
+    }
+
+    /**
+     * Executes a macro by retrieving it from the database and playing back its gestures.
+     */
+    private fun executeMacro(macroId: Long) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val database = MacroDatabase.getInstance(applicationContext)
+            val macro = database.macroDao().getMacroById(macroId)
+
+            if (macro != null) {
+                Log.i(TAG, "Executing macro: ${macro.name}")
+                playMacroGestures(macro)
+            } else {
+                Log.e(TAG, "Macro with ID $macroId not found")
+            }
         }
     }
-}
 
-/**
- * Worker class to handle macro playback at the scheduled time.
- */
-class MacroPlaybackWorker(context: Context, params: WorkerParameters) :
-    Worker(context, params) {
+    /**
+     * Plays back the gestures of a macro using the MacroAccessibilityService.
+     */
+    private fun playMacroGestures(macro: MacroEntity) {
+        val gestures = macro.gestures
+        if (gestures.isEmpty()) {
+            Log.e(TAG, "No gestures to play for macro: ${macro.name}")
+            return
+        }
 
-    override fun doWork(): Result {
-        // Retrieve the macro ID from the input data
-        val macroId = inputData.getString("MACRO_ID") ?: return Result.failure()
+        // Bind to MacroAccessibilityService to trigger playback
+        val intent = Intent(this, MacroAccessibilityService::class.java)
+        intent.putParcelableArrayListExtra(EXTRA_GESTURES, ArrayList(gestures))
+        startService(intent)
 
-        // Play the macro (use MacroRecorder's playback logic)
-        playMacro(macroId)
-
-        return Result.success()
+        Log.i(TAG, "Playback started for macro: ${macro.name}")
     }
 
-    private fun playMacro(macroId: String) {
-        // Logic to retrieve and play the macro based on its ID
-        // For simplicity, this calls MacroRecorder's playback method
-        // (You would load gestures from storage here)
-        val intent = Intent(applicationContext, MacroRecorder::class.java)
-        intent.action = "PLAYBACK"
-        applicationContext.startService(intent)
+    companion object {
+        const val ACTION_SCHEDULE_MACRO = "com.example.macroapp.action.SCHEDULE_MACRO"
+        const val ACTION_RUN_MACRO = "com.example.macroapp.action.RUN_MACRO"
+        const val EXTRA_MACRO_ID = "com.example.macroapp.extra.MACRO_ID"
+        const val EXTRA_SCHEDULE_TIME = "com.example.macroapp.extra.SCHEDULE_TIME"
+        const val EXTRA_GESTURES = "com.example.macroapp.extra.GESTURES"
     }
 }
