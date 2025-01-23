@@ -1,40 +1,28 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.macroapp">
 
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
     <application
         android:allowBackup="true"
-        android:label="MacroApp"
-        android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MacroApp">
 
-        <activity android:name=".MainActivity">
+        <activity android:name=".activities.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+        <activity android:name=".activities.MacroListActivity" />
+        <activity android:name=".activities.SchedulerActivity" />
 
         <service android:name=".services.OverlayService"
-            android:permission="android.permission.SYSTEM_ALERT_WINDOW"
-            android:enabled="true"
-            android:exported="false" />
+            android:permission="android.permission.SYSTEM_ALERT_WINDOW" />
 
-
-        <service android:name=".OverlayService" android:exported="true" />
-        <service
-            android:name=".MacroRecorder"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_config" />
-        </service>
+        <service android:name=".services.SchedulerService" />
+        <service android:name=".services.MacroAccessibilityService" />
     </application>
 </manifest>

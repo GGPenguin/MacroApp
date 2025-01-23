@@ -1,10 +1,11 @@
-package com.example.macroapp
+package com.example.macroapp.activities
 
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
+import com.example.macroapp.R
+import com.example.macroapp.services.OverlayService
 
 class MainActivity : AppCompatActivity() {
 
@@ -12,49 +13,20 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Buttons
-        val startOverlayButton: Button = findViewById(R.id.startOverlayButton)
-        val startRecordingButton: Button = findViewById(R.id.startRecordingButton)
-        val stopRecordingButton: Button = findViewById(R.id.stopRecordingButton)
-        val scheduleButton: Button = findViewById(R.id.scheduleButton)
-
-        // Start overlay service
-        startOverlayButton.setOnClickListener {
-            if (Settings.canDrawOverlays(this)) {
-                val intent = Intent(this, OverlayService::class.java)
-                startService(intent)
-            } else {
-                // Request permission to draw overlays
-                val overlayIntent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
-                startActivity(overlayIntent)
-            }
-        }
-
-        // Start recording macros
-        startRecordingButton.setOnClickListener {
-            val intent = Intent(this, MacroRecorder::class.java)
-            intent.action = "START_RECORDING"
-            startService(intent)
-        }
-
-        // Stop recording and save macros
-        stopRecordingButton.setOnClickListener {
-            val intent = Intent(this, MacroRecorder::class.java)
-            intent.action = "STOP_RECORDING"
-            startService(intent)
-        }
-
-        // Open scheduler
-        scheduleButton.setOnClickListener {
-            val intent = Intent(this, SchedulerActivity::class.java)
+        // Check if Overlay Permission is granted
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                android.net.Uri.parse("package:$packageName")
+            )
             startActivity(intent)
-        }
-
-        scheduleButton.setOnClickListener {
-            val intent = Intent(this, SchedulerActivity::class.java)
-            startActivity(intent)
+        } else {
+            startOverlayService()
         }
     }
+
+    private fun startOverlayService() {
+        val intent = Intent(this, OverlayService::class.java)
+        startService(intent)
+    }
 }
-
-
